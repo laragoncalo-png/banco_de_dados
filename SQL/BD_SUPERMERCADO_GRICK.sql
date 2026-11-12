@@ -433,7 +433,138 @@ FROM
         LEFT JOIN
 FUNCIONARIO F ON (S.SUP_CNPJ = F.FK_SUP_CNPJ);
 
+/*  Selecionar apenas os PRODUTOS que possuem registro em um SUPERMERCADO e que foram comprados por um CONSUMIDOR.*/
+SELECT PRO_NOME AS "NOME",
+       PRO_CODIGO_BARRAS AS "CÓDIGO DE BARRAS",
+       PRO_QUANTIDADE AS "QUANTIDADE"
+FROM   PRODUTO
+WHERE  PRO_ID IN (SELECT FK_PRO_ID
+				 FROM    SUPERMERCADO_PRODUTO)
+AND    PRO_ID IN (SELECT FK_PRO_ID
+                  FROM   PRODUTO_CONSUMIDOR);
+                  
+/*Selecionar apenas os CONSUMIDORES que NÃO compraram nenhum PRODUTO. */
+SELECT  CON_CPF AS "CPF",
+        CON_NOME AS "NOME",
+        CON_EMAIL AS "EMAIL"
+FROM    CONSUMIDOR
+WHERE   CON_CPF NOT IN (SELECT FK_CON_CPF
+                        FROM PRODUTO_CONSUMIDOR);
+                        
+/* Retornar os supermercados que têm o preço de todos os produtos menor que 10.*/
+SELECT  S.SUP_RAZAO_SOCIAL AS "NOME DO SUPERMERCADO"
+FROM    SUPERMERCADO S
+WHERE   10 > ALL (SELECT P.PRO_PRECO
+                  FROM   PRODUTO P 
+			      JOIN   SUPERMERCADO_PRODUTO SP ON P.PRO_ID = SP.FK_PRO_ID
+                  WHERE  SP.FK_SUP_CNPJ = S.SUP_CNPJ);
+                  
+/*Retornar os supermercados que possuem pelo menos um produto com preço inferior a R$ 10,00. */
+SELECT  S.SUP_RAZAO_SOCIAL AS "NOME DO SUPERMERCADO"
+FROM    SUPERMERCADO S
+WHERE   10 > ANY (SELECT P.PRO_PRECO
+                  FROM   PRODUTO P 
+			      JOIN   SUPERMERCADO_PRODUTO SP ON P.PRO_ID = SP.FK_PRO_ID
+                  WHERE  SP.FK_SUP_CNPJ = S.SUP_CNPJ);
+                  
+/*Liste todos os consumidores que compraram pelo menos um produto. */
+SELECT C.CON_NOME AS "NOME DO CONSUMIDOR",
+       C.CON_CPF AS "CPF DO CONSUMIDOR"
+FROM   CONSUMIDOR C 
+WHERE  EXISTS (SELECT 1
+               FROM   PRODUTO_CONSUMIDOR PC
+               WHERE  PC.FK_CON_CPF = C.CON_CPF);
+               
+/* Selecione os supermercados que não possuem produtos cadastrados*/
+SELECT S.SUP_RAZAO_SOCIAL AS "NOME DO SUPERMERCADO",
+       S.SUP_CNPJ AS "CNPJ DO SUPERMERCADO"
+FROM   SUPERMERCADO S
+WHERE  NOT EXISTS (SELECT 1
+                   FROM   SUPERMERCADO_PRODUTO SP
+                   WHERE  SP.FK_SUP_CNPJ = S.SUP_CNPJ);
+                   
+SELECT * FROM SUPERMERCADO;
+-- 21123654000105
 
+/* TCL - TRANSACTION CONTROL LANGUAGE*/
+-- COMMIT
+-- INICIANDO A TRANSAÇÃO 
+START TRANSACTION;
 
+-- ATUALIZAR O EMAIL DO GRICK DE SANTA RITA
+UPDATE SUPERMERCADO 
+SET    SUP_EMAIL = 'contato.SRPQ@hotmail.com'
+WHERE  SUP_CNPJ = '21123654000105';
+
+-- INSERIR UM NOVO CONSUMIDOR 
+INSERT INTO CONSUMIDOR (CON_CPF, CON_NOME, CON_TELEFONE, CON_EMAIL)
+VALUES ('48973216579008', 'Virginia' '19987450000', 'vi@gmail.com');
+
+-- SE TUDO DER CERTO, SUBIMOS AS ALTERAÇÕES PARA O SERVIDOR
+COMMIT;
+
+-- ROLLBACK 
+-- INICIANDO A TRANSAÇÃO 
+START TRANSACTION;
+
+-- INSERIR UM NOVO CONSUMIDOR COM ERRO
+INSERT INTO CONSUMIDOR (CON_CPF, CON_NOME, CON_TELEFONE, CON_EMAIL)
+VALUES ('48973216579008', 'Virginia' '19987450000', 'vi@gmail.com');
+
+-- FAZEMOS O ROLLBACK PARA VOLTAR O ESTADO ORIGINAL 
+ROLLBACK; 
+
+-- SAVEPOINT 
+START TRANSACTION; 
+
+-- INSERIR UM PRODUTO
+INSERT INTO PRODUTO (PRO_CODIGO_BARRAS,
+                     PRO_NOME,
+                     PRO_PESO,
+                     PRO_QUANTIDADE,
+                     PRO_PRECO)
+			VALUES ('78945259858594',
+                    'Escova de dente',
+                    0.2,
+                    100,
+                    15.9);
+                    
+-- CRIA UM PONTO DE SALVAMENTO (SAVEPOINT)
+SAVEPOINT savepoint_produto1;
+
+-- INSERIR MAIS UM PRODUTO
+INSERT INTO PRODUTO (PRO_CODIGO_BARRAS,
+                     PRO_NOME,
+                     PRO_PESO,
+                     PRO_QUANTIDADE,
+                     PRO_PRECO)
+			VALUES ('12345678912335',
+                    'Esponja de tomar banho',
+                    0.0,
+                    10,
+                    5.90);
+
+-- CRIA UM PONTO DE SALVAMENTO (SAVEPOINT)
+SAVEPOINT savepoint_produto2;
+
+-- CRIA UM PONTO DE SALVAMENTO (SAVEPOINT)
+SAVEPOINT savepoint_produto2;
+INSERT INTO PRODUTO (PRO_CODIGO_BARRAS,
+                     PRO_NOME,
+                     PRO_PESO,
+                     PRO_QUANTIDADE,
+                     PRO_PRECO)
+			VALUES ('123456789123357412647494955959587765433241527374849506997226354748590265343475646739390',
+                    'Esponja de tomar banho',
+                    0.0,
+                    10,
+                    5.90);
+                    
+-- CRIA UM PONTO DE SALVAMENTO (SAVEPOINT)
+SAVEPOINT savepoint_produto3;
+
+-- DER UM ERRO, PODEMOS VOLTAR PARA OS PONTOS DE SALVAMENTO ANTERIORES
+ROLLBACK TO savepoint_produto2;
+COMMIT;
 
 
